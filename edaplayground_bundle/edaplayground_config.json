@@ -1,0 +1,14 @@
+{
+  "eda_playground_url": "https://www.edaplayground.com/",
+  "languages_and_libraries": {
+    "testbench_language": "Python / Cocotb",
+    "top_module": "fifo",
+    "tools_and_simulators": "Icarus Verilog 0.10.0 or Aldec Riviera-PRO / Synopsys VCS",
+    "run_options": "-g2012"
+  },
+  "files_to_paste": {
+    "left_pane (Testbench)": "testbench.py",
+    "right_pane (Design)": "design.sv"
+  },
+  "waveform_setting": "Check 'Open EPWave after run' to inspect online interactive waveforms"
+}

@@ -1,0 +1,52 @@
+# Verification Plan (vPlan) for Synchronous FIFO
+project: Synchronous_FIFO_DV
+version: 1.0.0
+dut: fifo
+specification: spec.md
+
+requirements:
+  - id: REQ-FIFO-01
+    section: "4.1"
+    title: Asynchronous/Synchronous Reset State
+    description: >
+      When rst_n is asserted (low), empty asserts to 1, full deasserts to 0,
+      dout clears to 0, and internal read/write pointers and count reset to 0.
+    target_tests:
+      - test_fifo.test_fifo_fill_to_depth
+    target_coverpoints:
+      - top.fifo.empty
+      - top.fifo.full
+
+  - id: REQ-FIFO-02
+    section: "4.2 & 4.4"
+    title: FIFO Fill to Full Capacity (DEPTH=16)
+    description: >
+      The FIFO must accept exactly 16 sequential writes without premature full assertion.
+      When 15 items are stored, full MUST be 0. Full MUST only assert after item 16.
+    target_tests:
+      - test_fifo.test_fifo_fill_to_depth
+    target_coverpoints:
+      - top.fifo.count
+      - top.fifo.cross_count_full
+
+  - id: REQ-FIFO-03
+    section: "4.3"
+    title: FIFO Read-Only Empty Drain
+    description: >
+      When rd_en is asserted and empty is 0, stored data is read in FIFO order
+      and count decrements.
+    target_tests:
+      - test_fifo.test_fifo_fill_to_depth
+    target_coverpoints:
+      - top.fifo.rd_en
+
+  - id: REQ-FIFO-04
+    section: "4.3 & 4.4"
+    title: Simultaneous Read and Write Operation
+    description: >
+      When wr_en and rd_en are both asserted and FIFO is neither full nor empty,
+      one item is written, one item is read, and count remains unchanged.
+    target_tests:
+      - test_fifo.test_fifo_simultaneous_rw
+    target_coverpoints:
+      - top.fifo.cross_rw

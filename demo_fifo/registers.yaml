@@ -1,0 +1,32 @@
+# Register Map Specification for FIFO Control & Status (CSR)
+name: FIFO_CSR
+base_address: "0x4000_0000"
+
+registers:
+  - name: FIFO_CTRL
+    offset: "0x00"
+    width: 32
+    access: RW
+    reset: "0x0000_0000"
+    description: Control register for FIFO enable and flush commands.
+
+  - name: FIFO_STATUS
+    offset: "0x04"
+    width: 32
+    access: RO
+    reset: "0x0000_0001"
+    description: Status register showing full (bit 1) and empty (bit 0) flags.
+
+  - name: FIFO_INTR_STAT
+    offset: "0x08"
+    width: 32
+    access: W1C
+    reset: "0x0000_0000"
+    description: Interrupt status register; write 1 to clear interrupt flags.
+
+  - name: FIFO_WATERMARK
+    offset: "0x0C"
+    width: 32
+    access: RW
+    reset: "0x0000_000E"
+    description: Programmable almost-full threshold watermark.

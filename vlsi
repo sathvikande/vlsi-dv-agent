@@ -1,0 +1,291 @@
+#!/opt/homebrew/bin/python3.14
+"""
+VLSI Design Verification (DV) Unified CLI Wrapper
+Provides a user-friendly command interface to run simulations, formal checks,
+mutation testing, interactive dashboards, documentation updates, and Hermes AI.
+"""
+
+import os
+import sys
+import subprocess
+import argparse
+import webbrowser
+
+AGENT_ROOT = os.path.dirname(os.path.realpath(__file__))
+DEMO_DIR = os.path.join(AGENT_ROOT, "demo_fifo")
+SV_DIR = os.path.join(AGENT_ROOT, "sv_fifo_tb")
+MANUAL_PATH = os.path.join(AGENT_ROOT, "USER_MANUAL.md")
+
+# ANSI color codes for terminal formatting
+CYAN = "\033[1;36m"
+GREEN = "\033[1;32m"
+YELLOW = "\033[1;33m"
+RED = "\033[1;31m"
+MAGENTA = "\033[1;35m"
+BOLD = "\033[1m"
+RESET = "\033[0m"
+
+def print_banner():
+    banner = f"""
+{CYAN}================================================================================{RESET}
+{BOLD}⚡ AUTONOMOUS VLSI DESIGN VERIFICATION (DV) ENVIRONMENT{RESET}
+{CYAN}================================================================================{RESET}
+{YELLOW}Hardware Simulators :{RESET} Verilator 5.052 (2-state) | Icarus Verilog 13.0 (4-state)
+{YELLOW}Verification Engines:{RESET} Cocotb 2.1 | IEEE 1800 SVA | Z3 SMT Prover | Yosys SAT
+{YELLOW}Protocol VIPs       :{RESET} AMBA AXI4-Stream Verification IP (cocotbext-axi)
+{YELLOW}Autonomous AI Agent :{RESET} Hermes AI CLI with 20 MCP Verification Tools
+{CYAN}--------------------------------------------------------------------------------{RESET}"""
+    print(banner)
+
+
+def show_help():
+    print_banner()
+    help_text = f"""
+{BOLD}USAGE:{RESET}
+    {GREEN}vlsi{RESET} <command> [options]
+
+{BOLD}AVAILABLE COMMANDS:{RESET}
+    {GREEN}run{RESET} | {GREEN}demo{RESET}          Run complete end-to-end verification demo suite
+    {GREEN}sv [target]{RESET}        Run pure SystemVerilog IEEE 1800 Layered OOP Testbench:
+                           • Interface with Clocking Blocks & Modports
+                           • Constrained-Random Transactions & Mailboxes
+                           • Synchronous Driver & Passive Monitor
+                           • Golden Queue Scoreboard with 100% Data Integrity
+                           • Native SystemVerilog Covergroups & SVA Assertions
+    {GREEN}gen-sv <module>{RESET}    Scaffold complete 12-file SV layered OOP testbench
+    {GREEN}sim [target]{RESET}       Run hardware simulation:
+                           • {CYAN}fifo{RESET}   : Core Synchronous FIFO with compiled SVA (default)
+                           • {CYAN}axis{RESET}   : AMBA AXI4-Stream VIP packet burst testbench
+                           • {CYAN}icarus{RESET} : 4-state event simulation with FST waveform output
+    {GREEN}formal{RESET}             Run JasperGold-equivalent SAT temporal invariant proof
+    {GREEN}lec{RESET}                Run Cadence Conformal-equivalent Logic Equivalence Check
+    {GREEN}mutate{RESET}             Run automated fault injection & mutation resilience grading
+    {GREEN}dashboard{RESET}          Generate and view the interactive UCDB HTML signoff dashboard
+    {GREEN}heal{RESET}               Run the master closed-loop autonomous self-healing engine
+    {GREEN}agent{RESET}              Launch Hermes AI Verification Agent in interactive chat mode
+    {GREEN}test-mcp{RESET}           Test MCP tool server connectivity and verify discovered tools
+    {GREEN}manual{RESET} | {GREEN}doc{RESET}        Display the complete offline User Manual
+    {GREEN}update-manual{RESET}      Auto-sync USER_MANUAL.md with the latest tools in vlsi_mcp.py
+    {GREEN}save-context{RESET}       Save/export entire session context window & history
+    {GREEN}help{RESET}               Show this help message
+
+{BOLD}EXAMPLES:{RESET}
+    {CYAN}vlsi sv{RESET}                  # Run pure SystemVerilog IEEE 1800 OOP testbench
+    {CYAN}vlsi gen-sv alu{RESET}          # Scaffold complete SV OOP testbench for 'alu'
+    {CYAN}vlsi run{RESET}                 # Execute full verification pipeline
+    {CYAN}vlsi sim axis{RESET}            # Test AXI-Stream VIP handshakes & framing
+    {CYAN}vlsi mutate{RESET}              # Grade testbench quality against 5 synthetic bugs
+    {CYAN}vlsi dashboard{RESET}           # Open executive tapeout readiness dashboard
+    {CYAN}vlsi agent{RESET}               # Chat with autonomous Hermes DV engineer
+    {CYAN}vlsi update-manual{RESET}      # Update documentation after adding new tools
+
+{YELLOW}For detailed documentation, run:{RESET} {GREEN}vlsi manual{RESET} {YELLOW}or open:{RESET} {CYAN}{MANUAL_PATH}{RESET}
+"""
+    print(help_text)
+
+
+def run_sim(target="fifo"):
+    target = target.lower()
+    print(f"\n{BOLD}▶ Running Simulation Target: {CYAN}{target.upper()}{RESET}...")
+    if target == "axis":
+        cmd = ["make", "clean"]
+        subprocess.run(cmd, cwd=DEMO_DIR)
+        cmd = [
+            "make", "SIM=verilator",
+            "TOPLEVEL=axis_fifo",
+            "MODULE=test_axis_fifo",
+            f"VERILOG_SOURCES={DEMO_DIR}/axis_fifo.sv"
+        ]
+    elif target == "icarus":
+        cmd = ["make", "clean"]
+        subprocess.run(cmd, cwd=DEMO_DIR)
+        cmd = ["make", "SIM=icarus"]
+    else:
+        cmd = ["make", "clean"]
+        subprocess.run(cmd, cwd=DEMO_DIR)
+        cmd = ["make", "SIM=verilator"]
+
+    res = subprocess.run(cmd, cwd=DEMO_DIR)
+    if res.returncode == 0:
+        print(f"\n{GREEN}✔ Simulation '{target}' completed successfully with ZERO errors!{RESET}")
+    else:
+        print(f"\n{RED}✘ Simulation '{target}' failed. Check logs above.{RESET}")
+    return res.returncode
+
+
+def run_sv(target="run"):
+    print(f"\n{BOLD}▶ Running Pure SystemVerilog IEEE 1800 OOP Testbench Target: {CYAN}{target.upper()}{RESET}...")
+    sys.path.insert(0, AGENT_ROOT)
+    import vlsi_mcp
+    res = vlsi_mcp.run_sv_testbench(SV_DIR, target=target)
+    print(res)
+
+
+def gen_sv(module_name="my_design", out_dir=None):
+    print(f"\n{BOLD}▶ Scaffolding Complete IEEE 1800 SV Layered OOP Testbench for: {CYAN}{module_name}{RESET}...")
+    sys.path.insert(0, AGENT_ROOT)
+    import vlsi_mcp
+    if not out_dir:
+        out_dir = f"sv_{module_name.lower()}_tb"
+    res = vlsi_mcp.generate_sv_layered_tb(module_name, output_dir=out_dir)
+    print(res)
+
+
+def run_formal():
+    print(f"\n{BOLD}▶ Running Formal Invariant Verification via Yosys SAT...{RESET}")
+    sys.path.insert(0, AGENT_ROOT)
+    import vlsi_mcp
+    fifo_sv = os.path.join(DEMO_DIR, "fifo.sv")
+    res = vlsi_mcp.run_formal_check(fifo_sv, top_module="fifo", property_check="count <= 16")
+    print(res)
+
+
+def run_lec():
+    print(f"\n{BOLD}▶ Running Formal Logic Equivalence Checking (LEC)...{RESET}")
+    sys.path.insert(0, AGENT_ROOT)
+    import vlsi_mcp
+    fifo_sv = os.path.join(DEMO_DIR, "fifo.sv")
+    res = vlsi_mcp.check_logic_equivalence(fifo_sv, fifo_sv, top_module="fifo")
+    print(res)
+
+
+def run_mutate():
+    print(f"\n{BOLD}▶ Running Mutation Testing & Fault Grading...{RESET}")
+    sys.path.insert(0, AGENT_ROOT)
+    import vlsi_mcp
+    fifo_sv = os.path.join(DEMO_DIR, "fifo.sv")
+    res = vlsi_mcp.run_mutation_testing(fifo_sv, DEMO_DIR, max_mutations=5)
+    print(res)
+
+
+def run_dashboard():
+    print(f"\n{BOLD}▶ Generating Unified UCDB Interactive Dashboard...{RESET}")
+    sys.path.insert(0, AGENT_ROOT)
+    import vlsi_mcp
+    res = vlsi_mcp.generate_unified_ucdb_dashboard(DEMO_DIR)
+    print(res)
+    html_file = os.path.join(DEMO_DIR, "tapeout_dashboard.html")
+    print(f"\n{GREEN}✔ Dashboard ready:{RESET} file://{html_file}")
+
+
+def run_heal():
+    print(f"\n{BOLD}▶ Running Autonomous Closed-Loop Self-Healing Engine...{RESET}")
+    sys.path.insert(0, AGENT_ROOT)
+    import vlsi_mcp
+    res = vlsi_mcp.run_autonomous_heal_loop(DEMO_DIR, "fifo")
+    print(res)
+
+
+def run_agent():
+    print(f"\n{BOLD}▶ Launching Hermes AI Autonomous DV Agent...{RESET}")
+    print(f"{YELLOW}Hint: Try asking Hermes:{RESET}")
+    print(f"  {CYAN}'Inspect the FIFO specification and run the simulation.'{RESET}")
+    print(f"  {CYAN}'Run mutation testing and show me surviving mutants.'{RESET}")
+    print(f"  {CYAN}'Execute the autonomous heal loop and generate signoff dashboard.'{RESET}\n")
+    subprocess.run(["hermes", "chat", "-m", "openrouter/free"], cwd=DEMO_DIR)
+
+
+def test_mcp():
+    print(f"\n{BOLD}▶ Testing MCP Server (vlsi_tools)...{RESET}")
+    subprocess.run(["hermes", "mcp", "test", "vlsi_tools"])
+
+
+def show_manual():
+    if os.path.isfile(MANUAL_PATH):
+        with open(MANUAL_PATH) as f:
+            print(f.read())
+    else:
+        print(f"{RED}Manual not found at {MANUAL_PATH}. Run 'vlsi update-manual' to generate it.{RESET}")
+
+
+def update_manual():
+    print(f"\n{BOLD}▶ Auto-Synchronizing USER_MANUAL.md with registered tools in vlsi_mcp.py...{RESET}")
+    sys.path.insert(0, AGENT_ROOT)
+    import vlsi_mcp
+    res = vlsi_mcp.update_user_manual(MANUAL_PATH)
+    print(res)
+
+
+def backup_context():
+    print(f"\n{BOLD}▶ Backing up complete conversation context window...{RESET}")
+    script_path = os.path.join(AGENT_ROOT, "context_backup", "export_context.py")
+    subprocess.run(["python3.14", script_path])
+
+
+def main():
+    if len(sys.argv) < 2 or sys.argv[1] in ["-h", "--help", "help"]:
+        show_help()
+        sys.exit(0)
+
+    cmd = sys.argv[1].lower()
+
+    if cmd in ["run", "demo"]:
+        print_banner()
+        print(f"\n{BOLD}🚀 EXECUTING COMPLETE END-TO-END VERIFICATION SUITE{RESET}\n")
+        # Step 1: Pure SystemVerilog Layered OOP Testbench
+        run_sv("run")
+        # Step 2: Core FIFO SVA Simulation
+        rc = run_sim("fifo")
+        if rc != 0: sys.exit(rc)
+        # Step 3: AXI VIP
+        rc = run_sim("axis")
+        if rc != 0: sys.exit(rc)
+        # Step 4: LEC
+        run_lec()
+        # Step 5: Mutation
+        run_mutate()
+        # Step 6: Dashboard
+        run_dashboard()
+        print(f"\n{GREEN}{BOLD}🎉 ALL DEMO PASSES COMPLETED SUCCESSFULLY!{RESET}\n")
+
+    elif cmd in ["sv", "sim-sv"]:
+        target = sys.argv[2] if len(sys.argv) > 2 else "run"
+        run_sv(target)
+
+    elif cmd in ["gen-sv", "gensv"]:
+        mod = sys.argv[2] if len(sys.argv) > 2 else "my_design"
+        out = sys.argv[3] if len(sys.argv) > 3 else None
+        gen_sv(mod, out)
+
+    elif cmd == "sim":
+        target = sys.argv[2] if len(sys.argv) > 2 else "fifo"
+        run_sim(target)
+
+    elif cmd == "formal":
+        run_formal()
+
+    elif cmd == "lec":
+        run_lec()
+
+    elif cmd in ["mutate", "mutation"]:
+        run_mutate()
+
+    elif cmd in ["dashboard", "ucdb"]:
+        run_dashboard()
+
+    elif cmd in ["heal", "self-heal"]:
+        run_heal()
+
+    elif cmd in ["agent", "chat"]:
+        run_agent()
+
+    elif cmd in ["test-mcp", "mcp"]:
+        test_mcp()
+
+    elif cmd in ["manual", "doc", "docs"]:
+        show_manual()
+
+    elif cmd in ["update-manual", "sync-docs"]:
+        update_manual()
+
+    elif cmd in ["save-context", "backup-context", "export-context"]:
+        backup_context()
+
+    else:
+        print(f"{RED}Unknown command: '{cmd}'{RESET}")
+        show_help()
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
